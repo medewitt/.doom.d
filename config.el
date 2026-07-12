@@ -161,5 +161,31 @@
          ))
 )
 
+;; mdrepl — send markdown ```python / ```r / ```julia blocks to a live REPL,
+;; Quarto/RMarkdown-chunk style. Emacs port of the nvim config's lua/mdrepl.lua
+;; (medewitt/nvim), tuned for the ideeep content pages: on a page it launches
+;; `uv run --script scripts/repl_blocks.py <page> [--lang r|julia] --none`, the
+;; same environment the site's output injector uses. Elsewhere it falls back to
+;; python3 / radian-or-R / julia.
+(add-load-path! "lisp")
+(use-package! mdrepl
+  :commands (mdrepl-send-dwim mdrepl-send-block mdrepl-send-region
+             mdrepl-run-above mdrepl-preload mdrepl-toggle mdrepl-kill)
+  :init
+  (map! :after markdown-mode
+        :map (markdown-mode-map gfm-mode-map)
+        :localleader
+        (:prefix ("r" . "repl")
+         :desc "Send block/region"        "r" #'mdrepl-send-dwim
+         :desc "Send block"               "RET" #'mdrepl-send-block
+         :desc "Run blocks 1..point"      "a" #'mdrepl-run-above
+         :desc "Fresh REPL w/ page state" "A" #'mdrepl-preload
+         :desc "Toggle REPL window"       "o" #'mdrepl-toggle
+         :desc "Quit REPL"                "q" #'mdrepl-kill))
+  ;; Mirror the nvim `<leader><CR>` send in normal/visual state.
+  (map! :after markdown-mode
+        :map (markdown-mode-map gfm-mode-map)
+        :nv "<leader><return>" #'mdrepl-send-dwim))
+
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
