@@ -43,7 +43,10 @@
 (setq org-directory "~/org/")
 
 (setq user-full-name "Michael DeWitt"
-      user-mail-address "medewitt@wakehealth.edu")
+      user-mail-address "michael.dewitt@wfusm.edu")
+
+(setq projectile-project-search-path '("~/projects/" "~/wfu-id/" "~/Library/CloudStorage/Box-Box/"))
+(setq projectile-indexing-method 'alien) ; Or 'turbo-alien
 
 ;; Whenever you reconfigure a package, make sure to wrap your config in an
 ;; `after!' block, otherwise Doom's defaults may override your settings. E.g.
@@ -189,3 +192,11 @@
 
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
+
+(use-package treemacs-evil
+  :after (treemacs evil)
+  :ensure t)
+
+(use-package treemacs-projectile
+  :after (treemacs projectile)
+  :ensure t)
