@@ -175,6 +175,12 @@
   :commands (mdrepl-send-dwim mdrepl-send-block mdrepl-send-region
              mdrepl-run-above mdrepl-preload mdrepl-toggle mdrepl-kill)
   :init
+  ;; The repl menu must be reachable from every mode a code block can live in.
+  ;; With polymode active (the ideeep pages show `foo.md[python]' in the
+  ;; modeline), point inside a ```python fence puts the buffer in
+  ;; `python-mode', so bindings only on the markdown maps are shadowed there
+  ;; and `SPC m r' reports "undefined".  Bind the markdown host maps, the inner
+  ;; `python-mode-map', and the polymode minor-mode map.
   (map! :after markdown-mode
         :map (markdown-mode-map gfm-mode-map)
         :localleader
@@ -184,19 +190,84 @@
          :desc "Run blocks 1..point"      "a" #'mdrepl-run-above
          :desc "Fresh REPL w/ page state" "A" #'mdrepl-preload
          :desc "Toggle REPL window"       "o" #'mdrepl-toggle
-         :desc "Quit REPL"                "q" #'mdrepl-kill))
-  ;; Mirror the nvim `<leader><CR>` send in normal/visual state.
-  (map! :after markdown-mode
-        :map (markdown-mode-map gfm-mode-map)
+         :desc "Quit REPL"                "q" #'mdrepl-kill)
+        :nv "<leader><return>" #'mdrepl-send-dwim)
+  (map! :after python
+        :map python-mode-map
+        :localleader
+        (:prefix ("r" . "repl")
+         :desc "Send block/region"        "r" #'mdrepl-send-dwim
+         :desc "Send block"               "RET" #'mdrepl-send-block
+         :desc "Run blocks 1..point"      "a" #'mdrepl-run-above
+         :desc "Fresh REPL w/ page state" "A" #'mdrepl-preload
+         :desc "Toggle REPL window"       "o" #'mdrepl-toggle
+         :desc "Quit REPL"                "q" #'mdrepl-kill)
+        :nv "<leader><return>" #'mdrepl-send-dwim)
+  (map! :after polymode
+        :map polymode-mode-map
+        :localleader
+        (:prefix ("r" . "repl")
+         :desc "Send block/region"        "r" #'mdrepl-send-dwim
+         :desc "Send block"               "RET" #'mdrepl-send-block
+         :desc "Run blocks 1..point"      "a" #'mdrepl-run-above
+         :desc "Fresh REPL w/ page state" "A" #'mdrepl-preload
+         :desc "Toggle REPL window"       "o" #'mdrepl-toggle
+         :desc "Quit REPL"                "q" #'mdrepl-kill)
         :nv "<leader><return>" #'mdrepl-send-dwim))
 
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
 
-(use-package treemacs-evil
-  :after (treemacs evil)
-  :ensure t)
+;; treemacs-evil and treemacs-projectile are already provided by Doom's
+;; `:ui treemacs' module, so no extra `use-package!' is needed.
 
-(use-package treemacs-projectile
-  :after (treemacs projectile)
-  :ensure t)
+;; On macOS, pull PATH/env from the login shell so GUI Emacs sees the same
+;; tools (R, julia, uv, etc.) as the terminal.
+(use-package! exec-path-from-shell
+  :when (memq window-system '(mac ns x))
+  :config
+  (exec-path-from-shell-initialize))
+
+;; ESS: execute region/paragraph, save the plot to a temp PDF, and open it in a
+;; side window. Adapted from the rutils snippet; keybinding lives in an
+;; `after! ess' so `ess-mode-map' exists when it is bound.
+(defvar rutils-show-plot-next-to-r-process t)
+
+(defun add-pdf-to-rcode (rcomm fname)
+  "Wrap RCOMM so its plot output is written to FNAME as a PDF."
+  (concat "pdf('" fname "')\n" rcomm "\n dev.off()"))
+
+(defun rutils-plot-region-or-paragraph ()
+  "Run region or paragraph, save its plot to a temp PDF, and show it."
+  (interactive)
+  (let ((fname (concat (make-temp-file "plot_") ".pdf")))
+    (if (use-region-p)
+        (ess-eval-linewise
+         (add-pdf-to-rcode
+          (buffer-substring (region-beginning) (region-end)) fname))
+      (ess-eval-linewise
+       (add-pdf-to-rcode (thing-at-point 'paragraph) fname)))
+    (when rutils-show-plot-next-to-r-process
+      (ess-switch-to-end-of-ESS))
+    (if (window-in-direction 'right)
+        (select-window (window-in-direction 'right))
+      (progn
+        (split-window-right)
+        (select-window (window-in-direction 'right))))
+    (find-file fname)))
+
+(after! ess
+  (define-key ess-mode-map (kbd "C-c g") #'rutils-plot-region-or-paragraph))
+
+;; Python: no anaconda-mode (its bundled jedi crashes on Python 3.14, and we
+;; want to stay off the anaconda/conda stack entirely — see packages.el where
+;; anaconda-mode and company-anaconda are disabled).  Prefer the Homebrew
+;; python3 for `run-python', never the macOS /usr/bin one; project
+;; environments are handled by uv (and by mdrepl for markdown code blocks).
+(after! python
+  (setq python-shell-interpreter
+        (cond ((file-executable-p "/opt/homebrew/bin/python3")
+               "/opt/homebrew/bin/python3")
+              ((file-executable-p "/usr/local/bin/python3")
+               "/usr/local/bin/python3")
+              (t "python3"))))

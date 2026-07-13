@@ -6,9 +6,14 @@ my doom emacs config
 `lisp/mdrepl.el` brings Quarto/RMarkdown-style chunk execution to plain
 markdown, mirroring my nvim config (`medewitt/nvim`, `lua/mdrepl.lua`). Put
 point in a ` ```python `, ` ```r `, or ` ```julia ` fenced block and send it to
-that language's own persistent REPL in a terminal split below. Each language
-keeps its own REPL and state; sends are queued until the REPL shows its first
-prompt, so a cold `uv run` dependency resolve loses nothing.
+that language's own persistent REPL in a split below. Each language keeps its
+own REPL and state; sends are queued until the REPL shows its first prompt, so
+a cold `uv run` dependency resolve loses nothing.
+
+The REPL runs in [vterm](https://github.com/akermu/emacs-libvterm) (the same
+libvterm terminal nvim's `:terminal` uses), so IPython renders correctly and
+bracketed paste round-trips cleanly. vterm's native module compiles on first
+use; `cmake` and `libvterm` must be installed (`brew install cmake libvterm`).
 
 On [ideeep](https://github.com/medewitt/ideeep) content pages the REPL is
 launched with `uv run --script scripts/repl_blocks.py <page> [--lang r|julia]
@@ -17,7 +22,25 @@ injector uses (numpy, scipy, torch, jax, …), one REPL per page per language.
 Outside such a project it falls back to `python3`, `radian`-or-`R`, and
 `julia`; a `pyproject.toml`/`uv.lock` upward makes python use `uv run python`.
 
-### Keys (markdown/gfm)
+### Running a chunk
+
+1. Open the markdown file and put point inside a ` ```python ` block.
+2. Press `SPC RET` (or `SPC m r r`).
+
+A REPL window opens at the bottom. The first send cold-starts uv, so give it a
+few seconds; after that it is instant and reuses the same REPL for the page.
+
+After editing `config.el`, `packages.el`, or `lisp/mdrepl.el`, reload with
+`SPC h r r` (`M-x doom/reload`) — the keybindings and code only change on
+reload.
+
+### Keys
+
+The bindings are active in the markdown host modes and, because
+[polymode](https://polymode.github.io/) switches the buffer to the chunk's own
+major mode inside a fence (the modeline shows e.g. `foo.md[python]`), in the
+inner `python-mode` and the polymode minor-mode map too. Without the inner
+maps, `SPC m r` is *undefined* while point is inside a ` ```python ` block.
 
 | Keys | Action |
 |---|---|
@@ -28,6 +51,14 @@ Outside such a project it falls back to `python3`, `radian`-or-`R`, and
 | `SPC m r A` | Fresh REPL preloaded with page state (`--through N` on ideeep pages) |
 | `SPC m r o` | Toggle the REPL window (the REPL keeps running) |
 | `SPC m r q` | Quit: kill the REPL and close its pane |
+
+### Python vs R / Julia
+
+Python is the primary target: `repl_blocks.py` opens a real interactive IPython
+REPL in the page's uv environment, which is what mdrepl drives. R and Julia get
+only batch-style execution from `repl_blocks.py` (R shells out to `Rscript`),
+so for interactive R and Julia work prefer their native tooling — ESS (`M-x R`)
+for R and `julia-repl` for Julia — rather than mdrepl.
 
 ### Config
 
@@ -48,3 +79,13 @@ emacs -Q --batch -L lisp -l tests/test-mdrepl.el
 # set MDREPL_TEST_IDEEEP_PAGE=/path/to/ideeep/content/math/foo.md
 # to also exercise ideeep command resolution
 ```
+
+## Python editing
+
+`anaconda-mode` and `company-anaconda` (Doom's non-LSP python backend) are
+disabled in `packages.el`. Their bundled `jedi` 0.18.1 / `parso` 0.8.4 crash on
+Python 3.14 (`InvalidPythonEnvironment` / `EOFError: Ran out of input`), and the
+anaconda/conda stack is unwanted. `config.el` points `python-shell-interpreter`
+at the Homebrew `python3`, never the macOS `/usr/bin/python3`; project
+environments are handled by uv (and by mdrepl for markdown code blocks). For
+smart completion, add `(python +lsp)` with `basedpyright` later.

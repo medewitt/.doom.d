@@ -16,14 +16,16 @@
 ;; environment the site's output injector uses, one REPL per page per
 ;; language.
 ;;
-;; Built on term.el only; no external packages.  Keybindings live in
-;; config.el (markdown localleader).
+;; Built on vterm (emacs-libvterm) — the same libvterm terminal nvim's
+;; `:terminal' uses — so IPython/prompt_toolkit render correctly and bracketed
+;; paste round-trips cleanly (term.el garbles both).  vterm is required lazily
+;; the first time a REPL starts.  Keybindings live in config.el (markdown
+;; localleader).
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'subr-x)
-(require 'term)
 
 (defgroup mdrepl nil
   "Send markdown fenced code blocks to a persistent REPL."
@@ -76,7 +78,7 @@ project (see `mdrepl--resolve').")
 ;; One live REPL per key (the key encodes project root + page + language).
 (defvar mdrepl--repls (make-hash-table :test #'equal))
 
-(cl-defstruct mdrepl--repl buffer process ready queue timer)
+(cl-defstruct mdrepl--repl buffer process ready queue timer poll)
 
 ;; ---------------------------------------------------------------------------
 ;; REPL command resolution
@@ -183,7 +185,12 @@ block that ends above point (N = 0 when there is none)."
         (list "python" n blocks)))))
 
 ;; ---------------------------------------------------------------------------
-;; Terminal / process management
+;; Terminal / process management (vterm backend)
+
+(declare-function vterm-mode "ext:vterm")
+(defvar vterm-shell)
+(defvar vterm-kill-buffer-on-exit)
+(defvar vterm-exit-functions)
 
 (defun mdrepl--display (buf)
   "Show BUF in a fixed-height window at the bottom; return the window."
@@ -195,23 +202,37 @@ block that ends above point (N = 0 when there is none)."
     (when win (set-window-dedicated-p win t))
     win))
 
-(defun mdrepl--scroll (buf)
-  (when-let* ((win (get-buffer-window buf t)))
-    (with-selected-window win
-      (goto-char (point-max)))))
+(defun mdrepl--forget (key &optional kill)
+  "Drop KEY's REPL state and cancel its timers.
+With KILL non-nil also kill the REPL process and buffer; otherwise the
+buffer is left in place so its output (or a startup error) stays readable."
+  (when-let* ((st (gethash key mdrepl--repls)))
+    (remhash key mdrepl--repls)
+    (dolist (tm (list (mdrepl--repl-timer st) (mdrepl--repl-poll st)))
+      (when (timerp tm) (cancel-timer tm)))
+    (when kill
+      (let ((buf (mdrepl--repl-buffer st)))
+        (when (buffer-live-p buf)
+          (when-let* ((proc (get-buffer-process buf)))
+            (set-process-query-on-exit-flag proc nil)
+            (delete-process proc))
+          (kill-buffer buf))))))
 
 (defun mdrepl--cleanup (key)
   "Forget the REPL for KEY, killing its process and buffer (window follows)."
-  (when-let* ((st (gethash key mdrepl--repls)))
-    (remhash key mdrepl--repls)
-    (when (timerp (mdrepl--repl-timer st))
-      (cancel-timer (mdrepl--repl-timer st)))
-    (let ((buf (mdrepl--repl-buffer st)))
-      (when (buffer-live-p buf)
-        (when-let* ((proc (get-buffer-process buf)))
-          (set-process-query-on-exit-flag proc nil)
-          (delete-process proc))
-        (kill-buffer buf)))))
+  (mdrepl--forget key t))
+
+(defun mdrepl--on-vterm-exit (buf &optional _event)
+  "Forget the REPL whose vterm BUF exited, leaving the buffer visible."
+  (when (bufferp buf)
+    (let (key)
+      (maphash (lambda (k st)
+                 (when (eq (mdrepl--repl-buffer st) buf) (setq key k)))
+               mdrepl--repls)
+      (when key (mdrepl--forget key nil)))))
+
+(with-eval-after-load 'vterm
+  (add-hook 'vterm-exit-functions #'mdrepl--on-vterm-exit))
 
 ;; The REPL is "ready" once it shows a prompt; until then sends are queued.
 ;; IPython "In [", python ">>>", the repl_blocks banner "[repl]", radian
@@ -219,17 +240,33 @@ block that ends above point (N = 0 when there is none)."
 (defconst mdrepl--ready-regexps
   '("In \\[" ">>>" "\\[repl\\]" "r\\$>" "julia>" "^> "))
 
-(defun mdrepl--on-output (key chunk)
-  "Flush KEY's queued sends once CHUNK contains a REPL prompt."
+(defun mdrepl--ready-p (buf)
+  "Non-nil when the tail of vterm BUF shows a REPL prompt."
+  (and (buffer-live-p buf)
+       (with-current-buffer buf
+         (let* ((end (point-max))
+                (start (max (point-min) (- end 400)))
+                (tail (buffer-substring-no-properties start end)))
+           (cl-some (lambda (re) (string-match-p re tail))
+                    mdrepl--ready-regexps)))))
+
+(defun mdrepl--poll-ready (key)
+  "Flush KEY's queued sends once its REPL shows a prompt.
+Runs on a repeating timer because vterm owns the process filter; the timer
+cancels itself once the prompt appears."
   (when-let* ((st (gethash key mdrepl--repls)))
-    (unless (mdrepl--repl-ready st)
-      (when (cl-some (lambda (re) (string-match-p re chunk))
-                     mdrepl--ready-regexps)
-        (setf (mdrepl--repl-ready st) t)
-        (dolist (msg (nreverse (mdrepl--repl-queue st)))
-          (process-send-string (mdrepl--repl-process st) msg))
-        (setf (mdrepl--repl-queue st) nil)
-        (mdrepl--scroll (mdrepl--repl-buffer st))))))
+    (cond
+     ((not (buffer-live-p (mdrepl--repl-buffer st)))
+      (mdrepl--forget key nil))
+     ((mdrepl--repl-ready st)
+      (when (timerp (mdrepl--repl-poll st))
+        (cancel-timer (mdrepl--repl-poll st))))
+     ((mdrepl--ready-p (mdrepl--repl-buffer st))
+      (setf (mdrepl--repl-ready st) t)
+      (when (timerp (mdrepl--repl-poll st))
+        (cancel-timer (mdrepl--repl-poll st)))
+      (setf (mdrepl--repl-poll st) nil)
+      (mdrepl--flush st)))))
 
 (defun mdrepl--warn-slow (key)
   (when-let* ((st (gethash key mdrepl--repls)))
@@ -238,69 +275,94 @@ block that ends above point (N = 0 when there is none)."
                (length (mdrepl--repl-queue st))))))
 
 (defun mdrepl--ensure (res)
-  "Return a live REPL for the resolution RES, starting one if needed."
+  "Return a live vterm REPL for the resolution RES, starting one if needed."
+  (unless (require 'vterm nil t)
+    (user-error "mdrepl: vterm is unavailable; run `M-x vterm' once to build its module"))
   (let* ((key (plist-get res :key))
          (st (gethash key mdrepl--repls)))
-    (if (and st (process-live-p (mdrepl--repl-process st)))
+    (if (and st (buffer-live-p (mdrepl--repl-buffer st))
+             (process-live-p (mdrepl--repl-process st)))
         (progn (mdrepl--display (mdrepl--repl-buffer st)) st)
       (when st (mdrepl--cleanup key))
       (let* ((cmd (plist-get res :cmd))
              (default-directory (file-name-as-directory (plist-get res :cwd)))
-             (buf (condition-case err
-                      (apply #'make-term (concat "mdrepl " key)
-                             (car cmd) nil (cdr cmd))
-                    (error (user-error "mdrepl: could not start REPL: %s (%s)"
-                                       (string-join cmd " ")
-                                       (error-message-string err)))))
-             (proc (get-buffer-process buf)))
-        (unless (process-live-p proc)
-          (kill-buffer buf)
-          (user-error "mdrepl: could not start REPL: %s" (string-join cmd " ")))
-        (with-current-buffer buf
-          (term-char-mode))
-        (set-process-query-on-exit-flag proc nil)
-        (set-process-filter proc (lambda (p s)
-                                   (term-emulate-terminal p s)
-                                   (mdrepl--on-output key s)))
-        (set-process-sentinel proc (lambda (p e)
-                                     (term-sentinel p e)
-                                     (unless (process-live-p p)
-                                       (mdrepl--cleanup key))))
-        (setq st (make-mdrepl--repl
-                  :buffer buf :process proc :ready nil :queue nil
-                  :timer (run-at-time mdrepl-ready-timeout nil
-                                      #'mdrepl--warn-slow key)))
-        (puthash key st mdrepl--repls)
+             ;; vterm runs `/bin/sh -c VTERM-SHELL', so quote each argument.
+             (vterm-shell (mapconcat #'shell-quote-argument cmd " "))
+             (buf (generate-new-buffer (format "*mdrepl %s*" key))))
+        ;; Display before `vterm-mode' so the pty is sized to a real window.
         (mdrepl--display buf)
-        st))))
+        (with-current-buffer buf
+          (condition-case err
+              (vterm-mode)
+            (error (kill-buffer buf)
+                   (user-error "mdrepl: could not start REPL: %s (%s)"
+                               vterm-shell (error-message-string err))))
+          ;; `vterm-kill-buffer-on-exit' is consulted when the process EXITS,
+          ;; so a dynamic let-binding around `vterm-mode' has already unwound
+          ;; by then.  Set it buffer-locally so a failed/short-lived REPL (a
+          ;; broken `uv run', a crash) leaves its output on screen to read.
+          (setq-local vterm-kill-buffer-on-exit nil))
+        (let ((proc (get-buffer-process buf)))
+          (unless (process-live-p proc)
+            (kill-buffer buf)
+            (user-error "mdrepl: could not start REPL: %s" vterm-shell))
+          (set-process-query-on-exit-flag proc nil)
+          (setq st (make-mdrepl--repl
+                    :buffer buf :process proc :ready nil :queue nil
+                    :timer (run-at-time mdrepl-ready-timeout nil
+                                        #'mdrepl--warn-slow key)
+                    :poll (run-at-time 0.5 0.5 #'mdrepl--poll-ready key)))
+          (puthash key st mdrepl--repls)
+          st)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Sending
 
-(defun mdrepl--wrap (code)
-  "CODE as the byte sequence to hand the REPL, or nil when empty."
+(defun mdrepl--prepare (code)
+  "Return CODE trimmed for sending, or nil when it is empty.
+With `mdrepl-bracketed-paste' the block is kept verbatim.  Otherwise
+interior blank lines are dropped, since they terminate an indented suite
+in line-based REPLs."
   (let ((code (string-trim-right (or code "") "[\n]+")))
     (unless (string-empty-p code)
       (if mdrepl-bracketed-paste
-          ;; IPython, python >= 3.13, radian, R (readline >= 8.1) and julia
-          ;; all execute the paste as one unit when the newline arrives.
-          (concat "\e[200~" code "\e[201~\r")
-        ;; Line-based REPLs (code.interact, old python): interior blank lines
-        ;; terminate an indented suite, so drop them; the final blank line
-        ;; executes the rest.
-        (concat (string-join
-                 (seq-filter (lambda (l) (string-match-p "[^ \t]" l))
-                             (split-string code "\n"))
-                 "\n")
-                "\n\n")))))
+          code
+        (string-join
+         (seq-filter (lambda (l) (string-match-p "[^ \t]" l))
+                     (split-string code "\n"))
+         "\n")))))
+
+(defun mdrepl--wire (code)
+  "Turn prepared CODE into the byte string handed to the REPL process."
+  (if mdrepl-bracketed-paste
+      ;; Real bracketed paste (exactly what nvim's plugin sends over the pty):
+      ;; IPython/python>=3.13/radian/R/julia run it as one unit and skip the
+      ;; auto-indent that mangles a pasted suite.
+      (concat "\e[200~" code "\e[201~\r")
+    ;; Line-based REPLs: a trailing blank line closes an indented suite.
+    (concat code "\n\n")))
+
+(defun mdrepl--deliver (st code)
+  "Send prepared CODE straight to ST's REPL process and execute it.
+vterm is used only to render the pty; input goes to the process directly so
+the bracketed-paste markers reach the REPL unconditionally."
+  (let ((proc (mdrepl--repl-process st)))
+    (when (process-live-p proc)
+      (process-send-string proc (mdrepl--wire code)))))
+
+(defun mdrepl--flush (st)
+  "Deliver ST's queued blocks in submission order."
+  (dolist (code (nreverse (mdrepl--repl-queue st)))
+    (mdrepl--deliver st code))
+  (setf (mdrepl--repl-queue st) nil))
 
 (defun mdrepl--send (res code)
-  (when-let* ((msg (mdrepl--wrap code))
+  "Send CODE to the REPL for RES, queueing until its prompt appears."
+  (when-let* ((code (mdrepl--prepare code))
               (st (mdrepl--ensure res)))
     (if (mdrepl--repl-ready st)
-        (progn (process-send-string (mdrepl--repl-process st) msg)
-               (mdrepl--scroll (mdrepl--repl-buffer st)))
-      (push msg (mdrepl--repl-queue st)))))
+        (mdrepl--deliver st code)
+      (push code (mdrepl--repl-queue st)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Commands

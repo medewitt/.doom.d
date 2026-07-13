@@ -48,8 +48,24 @@
 ;(unpin! pinned-package another-pinned-package)
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
-(package! treemacs-evil)
-(package! treemacs-projectile)
+;; treemacs-evil / treemacs-projectile are bundled with Doom's `:ui treemacs'
+;; module, so they don't need to be declared here.
+(package! exec-path-from-shell)
+
+;; Drop Doom's non-LSP python backend: anaconda-mode pip-installs a bundled
+;; jedi/parso env (crashes on Python 3.14) and pulls in the anaconda stack we
+;; want to avoid.  Editing relies on tree-sitter + Homebrew python + uv; add
+;; `(python +lsp)' with basedpyright later if smart completion is wanted.
+(package! anaconda-mode :disable t)
+(package! company-anaconda :disable t)
+
+;; MELPA dropped the standalone `git-commit' recipe (magit 4.x folded it into
+;; magit), which breaks `doom sync' on this older Doom.  git-commit.el still
+;; ships inside the magit repo, so point straight there directly.  Shares the
+;; already-cloned magit checkout, so it tracks magit's pinned commit.
+(package! git-commit
+  :recipe (:host github :repo "magit/magit" :files ("lisp/git-commit.el")))
+
 (package! tldr)
 (package! stan-mode)
 (package! company-stan)

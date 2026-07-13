@@ -208,5 +208,3 @@
 ;;            stan-snippets))
 ;;            (use-package typst-mode
 ;;            :straight (:type git :host github :repo "Ziqi-Yang/typst-mode.el"))
-(when (memq window-system '(mac ns x))
-  (exec-path-from-shell-initialize))
