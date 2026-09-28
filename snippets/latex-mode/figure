@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: figure (label from file name)
+# key: fig
+# --
+\begin{figure}[${4:htbp}]
+  \centering
+  \includegraphics[width=${2:0.8}\textwidth]{${1:figures/name}}
+  \caption{$3}
+  \label{fig:${1:$(file-name-base yas-text)}}
+\end{figure}
+$0

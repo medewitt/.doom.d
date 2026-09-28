@@ -1,0 +1,39 @@
+# -*- mode: snippet -*-
+# name: template: manuscript draft
+# key: tpaper
+# expand-env: ((yas-indent-line 'fixed))
+# --
+#+title: ${1:Title}
+#+author: `user-full-name`
+#+date: `(format-time-string "%Y-%m-%d")`
+#+latex_class: article
+#+latex_class_options: [11pt]
+#+latex_header: \usepackage[margin=1in]{geometry}
+#+latex_header: \usepackage{amsmath, amssymb, bm, booktabs}
+#+latex_header: \usepackage[capitalise, noabbrev]{cleveref}
+#+cite_export: ${2:biblatex authoryear}
+#+bibliography: ${3:references.bib}
+#+options: toc:nil num:t
+#+property: header-args:R :session *R* :exports results
+#+property: header-args:julia :session *julia* :exports results
+
+#+begin_abstract
+$4
+#+end_abstract
+
+* Introduction
+$0
+
+* Methods
+** Data
+** Model
+** Inference
+Priors, prior predictive checks, sampler settings (seed 1834).
+
+* Results
+** Posterior predictive checks
+
+* Discussion
+
+* References
+#+print_bibliography:

@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# name: equation (labeled)
+# key: eq
+# --
+\begin{equation}
+  ${2:`(or yas-selected-text "")`}
+  \label{eq:${1:name}}
+\end{equation}
+$0

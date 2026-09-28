@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: R source block
+# key: srcr
+# expand-env: ((yas-indent-line 'fixed))
+# --
+#+begin_src R :session *R* :results ${1:$$(yas-choose-value '("output" "value" "graphics file"))} :exports ${2:both}${1:$(if (string-prefix-p "graphics" yas-text) " :file figures/plot.pdf" "")}
+$0
+#+end_src

@@ -1,0 +1,12 @@
+# -*- mode: snippet -*-
+# name: figure with tikzpicture
+# key: tikzfig
+# --
+\begin{figure}[${4:htbp}]
+  \centering
+  \begin{tikzpicture}[${1:>=stealth, node distance=2cm}]
+    $0
+  \end{tikzpicture}
+  \caption{$2}
+  \label{fig:${3:name}}
+\end{figure}

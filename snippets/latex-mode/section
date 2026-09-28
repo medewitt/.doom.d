@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: section (labeled)
+# key: sec
+# --
+\section{${1:Title}}
+\label{sec:${1:$(replace-regexp-in-string "[^a-z0-9]+" "-" (downcase yas-text))}}
+$0

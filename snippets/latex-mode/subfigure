@@ -1,0 +1,23 @@
+# -*- mode: snippet -*-
+# name: figure with two subfigures (subcaption)
+# key: subfig
+# --
+\begin{figure}[${7:htbp}]
+  \centering
+  \begin{subfigure}[b]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{${1:figures/a}}
+    \caption{$2}
+    \label{fig:${1:$(file-name-base yas-text)}}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{${3:figures/b}}
+    \caption{$4}
+    \label{fig:${3:$(file-name-base yas-text)}}
+  \end{subfigure}
+  \caption{$5}
+  \label{fig:${6:name}}
+\end{figure}
+$0

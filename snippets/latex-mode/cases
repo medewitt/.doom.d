@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: cases
+# key: cas
+# --
+\begin{cases}
+  ${1:a} & \text{if } ${2:x > 0}, \\\\
+  ${3:b} & \text{otherwise}.
+\end{cases}$0

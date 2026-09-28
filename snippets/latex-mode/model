@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: hierarchical model block (align)
+# key: model
+# --
+\begin{align}
+  y_i \mid ${1:\theta_i} &\sim ${2:\operatorname\{Poisson\}(\lambda_i)} \label{eq:${3:likelihood}} \\\\
+  ${4:\log \lambda_i} &= ${5:\alpha + \beta x_i} \\\\
+  ${6:\alpha} &\sim ${7:\mathcal\{N\}(0, 1)} \\\\
+  ${8:\beta} &\sim ${9:\mathcal\{N\}(0, 1)}
+\end{align}
+$0
