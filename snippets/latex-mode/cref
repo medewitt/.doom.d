@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: \cref
+# key: cr
+# --
+\cref{${1:$$(yas-choose-value '("fig:" "tab:" "eq:" "sec:" "app:"))}$2}$0

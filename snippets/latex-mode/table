@@ -1,0 +1,16 @@
+# -*- mode: snippet -*-
+# name: table (booktabs)
+# key: tab
+# --
+\begin{table}[${7:htbp}]
+  \centering
+  \caption{$1}
+  \label{tab:${2:name}}
+  \begin{tabular}{${3:lrr}}
+    \toprule
+    ${4:Column 1} & ${5:Column 2} & ${6:Column 3} \\\\
+    \midrule
+    $0 \\\\
+    \bottomrule
+  \end{tabular}
+\end{table}

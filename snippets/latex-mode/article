@@ -1,0 +1,44 @@
+# -*- mode: snippet -*-
+# name: article preamble
+# key: article
+# --
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm, bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, fit}
+\usepackage[style=${1:authoryear}, backend=biber]{biblatex}
+\addbibresource{${2:references.bib}}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise, noabbrev]{cleveref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+\title{${3:Title}}
+\author{`user-full-name`}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  $4
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+$0
+
+\printbibliography
+\end{document}

@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: template: research log entry
+# key: tlog
+# expand-env: ((yas-indent-line 'fixed))
+# --
+* `(format-time-string "%Y-%m-%d %a")`
+** Done
+- $1
+** Blocked
+** Next
+- [ ] $0

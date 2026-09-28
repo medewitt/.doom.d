@@ -89,3 +89,55 @@ anaconda/conda stack is unwanted. `config.el` points `python-shell-interpreter`
 at the Homebrew `python3`, never the macOS `/usr/bin/python3`; project
 environments are handled by uv (and by mdrepl for markdown code blocks). For
 smart completion, add `(python +lsp)` with `basedpyright` later.
+
+## Snippets: LaTeX and org
+
+`snippets/` holds personal yasnippets.
+Doom's `:editor snippets` module loads this directory (`+snippets-dir`) automatically, so no config change is needed.
+Type the key and press `TAB`; `SPC i s` lists snippets for the current mode.
+`snippets/LaTeX-mode/.yas-parents` makes the `latex-mode` snippets available under AUCTeX's `LaTeX-mode`.
+Labels are generated from the text you type where possible, and float placement is always the last tab stop.
+
+### LaTeX (`snippets/latex-mode`)
+
+| Key | Expands to |
+|---|---|
+| `fig` | `figure` with `\includegraphics`; label `fig:<file base name>` |
+| `subfig` | two `subfigure`s (needs `subcaption`), each labeled from its file |
+| `tikzfig` | `figure` wrapping a `tikzpicture` |
+| `tab` | `table` with booktabs rules |
+| `eq` / `eq*` | labeled `equation` (wraps the selection) / `equation*` |
+| `ali` / `ali*` | labeled `align` / `align*` |
+| `cas` | `cases` |
+| `model` | hierarchical model in `align` (likelihood, link, priors) |
+| `beg` | generic `\begin{env}...\end{env}` with mirrored name |
+| `mm` | inline math `\( \)` |
+| `sec` / `sub` | section / subsection with label slugified from the title |
+| `cr` | `\cref{}` with a prefix choice (`fig:`, `tab:`, `eq:`, `sec:`, `app:`) |
+| `thm` | theorem-like environment (choice) with prefixed label and `proof` |
+| `itm` / `enu` | `itemize` / `enumerate` |
+| `article` | full article preamble (amsmath, booktabs, subcaption, TikZ, biblatex, cleveref) |
+
+### Org (`snippets/org-mode`)
+
+| Key | Expands to |
+|---|---|
+| `fig` | `#+caption`, `#+name: fig:<file base name>`, LaTeX/HTML width, file link |
+| `tab` | captioned, named booktabs table |
+| `eq` / `ali` | labeled LaTeX `equation` / `align` (exports to LaTeX and MathJax) |
+| `srcr` | R block (`:session *R*`), choice of `output`/`value`/`graphics file` |
+| `srcj` | Julia block (`:session *julia*`) |
+| `srcs` | Stan program tangled to `models/<name>.stan` |
+| `lhdr` | LaTeX export header (class, packages, options) |
+| `tpaper` | manuscript skeleton: export header, org-cite, abstract, IMRaD headings |
+| `tanalysis` | analysis notebook: data.table + cmdstanr setup, seed 1834, PPC, `sessionInfo()` |
+| `tread` | paper reading note with DOI/citekey properties |
+| `tmeet` | meeting notes with a TODO carrying a one-week deadline |
+| `tlog` | dated research log entry |
+
+Org snippets use `yas-indent-line 'fixed` so org does not re-indent `#+begin_src` bodies through the language mode.
+
+### Tests
+
+The snippets were checked by expanding each one in batch Emacs with yasnippet 0.14.
+In snippet bodies, `\\` produces one backslash and braces inside a field default must be escaped (`${1:\mathcal\{N\}}`).

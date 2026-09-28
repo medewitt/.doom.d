@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: theorem-like environment with proof
+# key: thm
+# --
+\begin{${1:$$(yas-choose-value '("theorem" "lemma" "proposition" "corollary" "definition" "remark"))}}
+  \label{${1:$(or (cdr (assoc yas-text '(("theorem" . "thm") ("lemma" . "lem") ("proposition" . "prop") ("corollary" . "cor") ("definition" . "def") ("remark" . "rem")))) yas-text)}:${2:name}}
+  $3
+\end{$1}
+\begin{proof}
+  $0
+\end{proof}

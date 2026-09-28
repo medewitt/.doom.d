@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: figure (caption, name, LaTeX width)
+# key: fig
+# expand-env: ((yas-indent-line 'fixed))
+# --
+#+caption: $3
+#+name: fig:${1:$(file-name-base yas-text)}
+#+attr_latex: :width ${2:0.8}\textwidth :placement [htbp]
+#+attr_html: :width 80%
+[[file:${1:figures/name.pdf}]]
+$0

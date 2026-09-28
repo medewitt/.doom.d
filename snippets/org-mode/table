@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: table (caption, name, booktabs)
+# key: tab
+# expand-env: ((yas-indent-line 'fixed))
+# --
+#+caption: $2
+#+name: tab:${1:name}
+#+attr_latex: :booktabs t :placement [htbp]
+| ${3:Column 1} | ${4:Column 2} |
+|-
+| $0 | |

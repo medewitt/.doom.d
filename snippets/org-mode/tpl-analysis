@@ -1,0 +1,41 @@
+# -*- mode: snippet -*-
+# name: template: analysis notebook
+# key: tanalysis
+# expand-env: ((yas-indent-line 'fixed))
+# --
+#+title: ${1:Analysis}
+#+author: `user-full-name`
+#+date: `(format-time-string "%Y-%m-%d")`
+#+property: header-args:R :session *R* :results output :exports both
+#+property: header-args:julia :session *julia* :results output :exports both
+
+* Setup
+#+begin_src R
+library(data.table)
+library(cmdstanr)
+set.seed(1834)
+mod <- cmdstan_model("models/model.stan")
+#+end_src
+
+* Data
+$0
+
+* Model
+** Assumptions
+** Prior predictive check
+
+* Fit
+#+begin_src R
+fit <- mod\$sample(data = stan_data, seed = 1834, chains = 4, parallel_chains = 4)
+fit\$cmdstan_diagnose()
+#+end_src
+
+* Posterior predictive check
+
+* Results
+Report posterior medians with 95% credible intervals.
+
+* Session info
+#+begin_src R :results output
+sessionInfo()
+#+end_src

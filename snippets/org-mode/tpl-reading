@@ -1,0 +1,20 @@
+# -*- mode: snippet -*-
+# name: template: paper reading notes
+# key: tread
+# expand-env: ((yas-indent-line 'fixed))
+# --
+* ${1:Title}
+:PROPERTIES:
+:AUTHORS:  $2
+:YEAR:     $3
+:DOI:      $4
+:CITEKEY:  $5
+:END:
+** Question
+$6
+** Data and design
+** Model and assumptions
+** Main result (with uncertainty)
+** Limitations
+** Relevance to my work
+$0

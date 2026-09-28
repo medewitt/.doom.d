@@ -1,0 +1,10 @@
+# -*- mode: snippet -*-
+# name: equation (labeled, LaTeX)
+# key: eq
+# expand-env: ((yas-indent-line 'fixed))
+# --
+\begin{equation}
+  $2
+  \label{eq:${1:name}}
+\end{equation}
+$0
