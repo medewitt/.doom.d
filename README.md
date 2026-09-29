@@ -1,5 +1,7 @@
 # .doom.d
-my doom emacs config
+my doom emacs config.
+
+Reload the config with `SPC h r r`.
 
 ## mdrepl — send markdown code blocks to a live REPL
 
@@ -97,6 +99,43 @@ Doom's `:editor snippets` module loads this directory (`+snippets-dir`) automati
 Type the key and press `TAB`; `SPC i s` lists snippets for the current mode.
 `snippets/LaTeX-mode/.yas-parents` makes the `latex-mode` snippets available under AUCTeX's `LaTeX-mode`.
 Labels are generated from the text you type where possible, and float placement is always the last tab stop.
+
+### Using snippets
+
+1. In insert state, type the key at the start of a line or after a space.
+2. Press `TAB` to expand.
+3. Type into the first field, then `TAB` to move to the next field and `S-TAB` to move back.
+4. The last `TAB` exits to `$0`, the point after the snippet.
+
+Some fields mirror others.
+For example, in `fig` the label `fig:<name>` updates as you type the file path, and in `beg` the `\end{}` name follows `\begin{}`.
+Choice fields (`cr`, `thm`, `srcr`) open a completion list when you reach them.
+If a key matches more than one snippet (for example, one of these and one from Doom's built-in library), yasnippet asks which to use.
+
+To wrap existing text, select it in visual state, run `SPC i s`, and pick the snippet by name.
+Only the LaTeX `eq` snippet uses the selection; the others ignore it.
+
+### Snippets by context
+
+| Where you are | Snippets available | Notes |
+|---|---|---|
+| `.tex` file (AUCTeX `LaTeX-mode`) | `snippets/latex-mode` | Loaded through `snippets/LaTeX-mode/.yas-parents`. |
+| `.org` file, anywhere in the buffer | `snippets/org-mode` | LaTeX-mode snippets do not load in org; use `eq` and `ali` from the org set for display math. The org set has no `eq*` or `ali*`. |
+| Inside an org `#+begin_src` block | `snippets/org-mode` | The buffer is still in `org-mode`. To get the language's snippets, open the block with `C-c '` (`org-edit-special`), which edits it in its own major mode. |
+| `.stan` file, or a Stan block opened with `C-c '` | `stan-snippets` package | Installed in `packages.el`; not part of this directory. |
+| Markdown or Quarto | none from this directory | Only Doom's built-in snippets apply. |
+
+Typical workflows:
+
+- **Manuscript in LaTeX.** Start an empty `.tex` file with `article`, add headings with `sec` and `sub`, display math with `eq` or `ali`, a Bayesian model with `model`, and cross-references with `cr`.
+- **Manuscript in org.** Start with `tpaper` (or `lhdr` for the export header only), use `eq` and `ali` for math, `fig` and `tab` for floats, and `srcr`, `srcj`, or `srcs` for code.
+- **Analysis notebook in org.** Start with `tanalysis`, then add R, Julia, or Stan blocks with `srcr`, `srcj`, or `srcs`. `srcs` tangles the model to `models/<name>.stan` with `C-c C-v t`.
+- **Notes in org.** `tread` for a paper, `tmeet` for a meeting, `tlog` for a dated log entry.
+
+### Adding or changing snippets
+
+Create a snippet with `M-x yas-new-snippet` and save it under `snippets/<mode>/`.
+After editing a file in `snippets/` during a session, run `M-x yas-reload-all` to load the change.
 
 ### LaTeX (`snippets/latex-mode`)
 
