@@ -1,5 +1,7 @@
 # .doom.d
-my doom emacs config
+my doom emacs config.
+
+Reload the config with `SPC h r r`.
 
 ## mdrepl — send markdown code blocks to a live REPL
 
